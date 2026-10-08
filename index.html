@@ -23,7 +23,8 @@ body{margin:0;background:var(--ink);color:var(--moon);overflow:hidden;touch-acti
 #sigs{color:var(--rune)}
 #cmpwrap{color:var(--gold)}
 #cmpa{font-weight:700;font-size:15px}
-#mute{pointer-events:auto;background:rgba(5,8,22,.55);border:1px solid rgba(143,180,204,.4);color:var(--mist);font:inherit;font-size:10px;padding:3px 6px;border-radius:0;cursor:pointer;margin-top:2px}
+#btns{display:flex;gap:4px;margin-top:2px}
+#mapb,#mute{pointer-events:auto;background:rgba(5,8,22,.55);border:1px solid rgba(143,180,204,.4);color:var(--mist);font:inherit;font-size:10px;padding:3px 6px;border-radius:0;cursor:pointer}
 #obj{left:0;right:0;top:calc(max(10px,env(safe-area-inset-top)) + 58px);text-align:center;font-size:11px;color:var(--moon);text-shadow:0 1px 6px #000,0 0 3px #000;padding:0 60px;white-space:normal}
 #biome{left:12px;top:calc(max(10px,env(safe-area-inset-top)) + 46px);font-size:10px;color:var(--mist);opacity:.9;transition:color .6s}
 #biome.flash{color:var(--gold)}
@@ -39,6 +40,11 @@ body{margin:0;background:var(--ink);color:var(--moon);overflow:hidden;touch-acti
 #boss .nm{color:var(--moon);margin-bottom:2px}
 #bossf{color:var(--rune)}
 #boss.open #bossf,#boss.open .nm{color:var(--cyan)}
+#ovm{padding:12px}
+#mapart{margin:0;font-family:var(--font-mono);font-size:calc((100vw - 24px)/38.6);line-height:1.12;text-align:left;white-space:pre;letter-spacing:0}
+#maphd{font-size:12px;color:var(--moon);margin-bottom:8px}
+#maplg{margin-top:10px;font-size:10px;color:var(--mist);line-height:1.7;white-space:pre-line;text-align:left}
+#mapart .pl{color:var(--gold);font-weight:700;animation:pulse .8s steps(2) infinite}
 #hint{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));text-align:center;font-size:10px;color:var(--mist);transition:opacity 1.2s;opacity:.85;white-space:normal}
 #hint.gone{opacity:0}
 #hurt{inset:0;box-shadow:inset 0 0 90px 20px rgba(255,40,80,.75);opacity:0}
@@ -70,7 +76,7 @@ pre.art{margin:0 0 16px;font-family:var(--font-mono);font-weight:700;font-size:m
     <div id="right">
       <div id="sigs">SIGILS [ ][ ][ ]</div>
       <div id="cmpwrap"><span id="cmpa">→</span> <span id="cmpd">  0m</span><span id="cmp"></span></div>
-      <button id="mute" type="button">[SND:ON]</button>
+      <div id="btns"><button id="mapb" type="button">[MAP]</button><button id="mute" type="button">[SND:ON]</button></div>
     </div>
   </div>
   <div class="hud" id="biome"></div>
@@ -96,6 +102,12 @@ pre.art{margin:0 0 16px;font-family:var(--font-mono);font-weight:700;font-size:m
 &gt; someone has to ride_</div>
     <div class="tap">[ TAP TO RIDE ]</div>
     <div class="how">drag anywhere to steer · hold still beside a well to drink, under a tree to eat · stomp or slash at full gallop · beware of arrows, hounds and shamans</div>
+  </div>
+  <div class="ov" id="ovm">
+    <div id="maphd">&gt; MAP :: the mist-lands</div>
+    <pre id="mapart"></pre>
+    <div id="maplg"></div>
+    <div class="tap" style="margin-top:14px">[ TAP TO CLOSE ]</div>
   </div>
   <div class="ov" id="ovd">
     <pre class="art" style="font-size:min(4vw,20px)">&gt; SIGNAL LOST
@@ -744,7 +756,7 @@ var M_GOB={d:[16,64,44],l:[160,240,124]},M_EYE={d:[255,70,50],l:[255,224,150]};
 var M_BRU={d:[74,30,52],l:[228,120,118]},M_BAR={d:[50,58,96],l:[196,206,238]},M_CLUB={d:[70,50,50],l:[190,150,130]};
 var M_ST={d:[30,42,84],l:[168,196,236]},M_STM={d:[22,66,76],l:[110,206,170]},M_CORE={d:[255,50,120],l:[255,230,244]};
 var M_CORE_D={d:[24,28,64],l:[56,66,112]},M_CORE_S={d:[40,150,255],l:[220,250,255]},M_FL={d:[200,220,255],l:[255,255,255]};
-var GM={state:'title',hp:100,vig:100,exh:false,kbx:0,kby:0,inv:0,swing:0,kills:0,eaten:0,sigils:0,tm:0,drank:false,ate:false,
+var GM={state:'title',hp:50,vig:50,exh:false,kbx:0,kby:0,inv:0,swing:0,kills:0,eaten:0,sigils:0,tm:0,drank:false,ate:false,
   hold:0,holdObj:null,dA:0,cp:{x:0,y:0},deaths:0,deadT:0,deadShown:false,near:null,nearT:0,lvT:0,lvl:0,toastT:0,stage:0,done:false};
 var E=[],gSeed=7,B={x:ARENA.x,y:ARENA.y,psi:2.4,hp:60,mx:60,phase:1,last:'',st:'dormant',tm:0,ph:0,cd:1,flash:0,walk:0,ring:null,rocks:null,hitId:-1,warned:false,dmgd:false,tilt:0};
 function rnd(){gSeed=(gSeed*1664525+1013904223)>>>0;return gSeed/4294967296;}
@@ -770,7 +782,7 @@ function hurt(n,fx,fy,kb){
 }
 function vigor(dt){
   var moving=spd>0.5;
-  if(spd>7.2)GM.vig-=6.5*dt;else GM.vig+=(moving?5:14)*dt;
+  if(spd>7.2)GM.vig-=6.5*dt;else GM.vig+=(moving?2.5:7)*dt;
   if(GM.vig<=0){GM.vig=0;GM.exh=true;}
   if(GM.vig>100)GM.vig=100;
   if(GM.exh&&GM.vig>25)GM.exh=false;
@@ -1194,7 +1206,7 @@ GM.tick=function(dt,t){
     if(GM.deadT>1.3&&!GM.deadShown){GM.deadShown=true;ovD.classList.add('on');}
     return;
   }
-  if(GM.state==='win'){return;}
+  if(GM.state==='win'||GM.state==='map'){return;}
   GM.tm+=dt;GM.inv=Math.max(0,GM.inv-dt);
   var kd=Math.pow(0.004,dt);GM.kbx*=kd;GM.kby*=kd;
   vigor(dt);
@@ -1387,6 +1399,48 @@ GM.draw=function(t){
 };
 
 window.__gm={GM:GM,E:E,B:B,CAMPS:CAMPS,ARENA:ARENA,SPEC:SPEC,cellSpecial:cellSpecial,isWater:isWater,hurt:hurt};
+/* ----- mapa ----- */
+var mapEl=$('mapart'),mapLg=$('maplg'),ovM=$('ovm'),mapB=$('mapb'),mapBase=null,MC=64,MR=30,MU0=-120,MU1=170,MV0=-45,MV1=135;
+function buildMapBase(){
+  mapBase=[];
+  for(var r=0;r<MR;r++){
+    var row=[];
+    for(var c=0;c<MC;c++){
+      var u=MU0+(c+0.5)/MC*(MU1-MU0),v=MV0+(r+0.5)/MR*(MV1-MV0),x=(u+v)/2,y=(v-u)/2,ch,col;
+      if(isWater(x,y)){ch=(c+r)%3?'~':'-';col='#3a6aa8';}
+      else{biomeW(x,y);if(br>0.5){ch=':';col='#b8524a';}else if(bw>0.35){ch=',';col='#2f7f8a';}else{ch='.';col='#3f9b8e';}}
+      row.push([ch,col]);
+    }
+    mapBase.push(row);
+  }
+}
+function mapCell(x,y){var u=x-y,v=x+y;return [Math.round((u-MU0)/(MU1-MU0)*MC-0.5),Math.round((v-MV0)/(MV1-MV0)*MR-0.5)];}
+function showMap(){
+  if(!mapBase)buildMapBase();
+  var g=mapBase.map(function(r){return r.map(function(c){return {ch:c[0],col:c[1],pl:false};});});
+  function mark(x,y,ch,col,pl){var p=mapCell(x,y);if(p[0]>=0&&p[0]<MC&&p[1]>=0&&p[1]<MR)g[p[1]][p[0]]={ch:ch,col:col,pl:pl};}
+  mark(SPEC[0].x,SPEC[0].y,'W','#6fd6ff');mark(SPEC[1].x,SPEC[1].y,'T','#ff5a6e');
+  for(var i=0;i<CAMPS.length;i++){var c=CAMPS[i];mark(c.x,c.y,c.cleared?'+':(c.sigil?'X':'x'),c.cleared?'#7dffa0':'#ff5fb0');}
+  mark(ARENA.x,ARENA.y,'A',B.st==='dead'?'#7dffa0':'#c07bff');
+  mark(hx,hy,'@','#e8b45a',true);
+  var out='';
+  for(var r=0;r<MR;r++){
+    var run='',rc='',pl=false;
+    for(var cc=0;cc<MC;cc++){
+      var q=g[r][cc],k=q.col+(q.pl?'!':'');
+      if(k!==rc&&run){out+='<span'+(pl?' class="pl"':'')+' style="color:'+rc.replace('!','')+'">'+run+'</span>';run='';}
+      rc=k;pl=q.pl;run+=q.ch;
+    }
+    out+='<span'+(pl?' class="pl"':'')+' style="color:'+rc.replace('!','')+'">'+run+'</span>\n';
+  }
+  mapEl.innerHTML=out;
+  mapLg.textContent='@ you   W well   T apple tree   X/x camp (+ cleared)   A guardian arena\n~ the fen (west)   . hollow wood (center)   : red barrens (east)\nscreen-left = west water · screen-right = red earth';
+  ovM.classList.add('on');
+}
+GM.mapOpen=function(){if(GM.state==='play'){GM.state='map';stickReset();showMap();}};
+GM.mapClose=function(){if(GM.state==='map'){GM.state='play';ovM.classList.remove('on');}};
+mapB.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();if(GM.state==='play')GM.mapOpen();});
+ovM.addEventListener('pointerdown',function(e){e.preventDefault();GM.mapClose();});
 ovT.addEventListener('pointerdown',function(e){e.preventDefault();GM.begin();});
 ovD.addEventListener('pointerdown',function(e){e.preventDefault();GM.retry();});
 $('again').addEventListener('pointerdown',function(e){e.preventDefault();try{location.reload();}catch(_){}});
@@ -1478,6 +1532,7 @@ var input={dc:0,dr:0,mag:0},keys={},stickId=null,sox=0,soy=0,STICK_R=56;
 var stickEl=document.getElementById('stick'),knobEl=document.getElementById('knob'),slashBtn=document.getElementById('slash');
 var hintEl=document.getElementById('hint'),biomeEl=document.getElementById('biome');
 var moved=false,firstMove=0;
+function stickReset(){stickId=null;input.mag=0;stickEl.hidden=true;}
 function setStick(x,y,show){
   stickEl.hidden=!show;
   if(show){stickEl.style.left=sox+'px';stickEl.style.top=soy+'px';knobEl.style.transform='translate('+x+'px,'+y+'px)';}
@@ -1514,6 +1569,8 @@ slashBtn.addEventListener('pointerup',offBtn);slashBtn.addEventListener('pointer
 window.addEventListener('keydown',function(e){
   var k=e.key.toLowerCase();
   if(GM.state==='title'){GM.begin();return;}
+  if(GM.state==='map'){GM.mapClose();return;}
+  if(k==='m'){GM.mapOpen();return;}
   if(GM.state==='dead'){GM.retry();return;}
   if(k===' '||k==='enter'){doSlash();e.preventDefault();return;}
   if(k==='arrowup'||k==='arrowdown'||k==='arrowleft'||k==='arrowright')e.preventDefault();
