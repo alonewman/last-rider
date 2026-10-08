@@ -64,10 +64,23 @@ pre.art{margin:0 0 16px;font-family:var(--font-mono);font-weight:700;font-size:m
 .how{margin-top:22px;font-size:10px;color:#6f8ca6;line-height:1.7;max-width:320px}
 #stats{margin-top:18px;font-size:11px;color:var(--gold);line-height:1.8;white-space:pre-line}
 #again{margin-top:22px;background:none;border:1px solid var(--gold);color:var(--gold);font-family:var(--font-mono);font-weight:700;font-size:14px;padding:10px 22px;cursor:pointer;border-radius:0}
+#lbT,#lbB{position:absolute;left:0;right:0;height:0;background:#02040a;transition:height 1.4s ease;pointer-events:none;z-index:6}
+#lbT{top:0}#lbB{bottom:0}
+#stage.cine #lbT,#stage.cine #lbB{height:15%}
+#fadeI{position:absolute;inset:0;background:#02040a;opacity:0;pointer-events:none;z-index:7}
+#fadeI.black{opacity:1}
+#fadeI.fin{opacity:0;transition:opacity 3.2s ease-in}
+#icap{left:16px;right:16px;bottom:calc(15% - 64px);z-index:8;font-size:13px;line-height:1.6;color:var(--moon);text-shadow:0 0 10px rgba(111,214,255,.6),0 1px 4px #000;text-align:left;white-space:pre-line;opacity:0;transition:opacity .6s}
+#stage.cine #icap{opacity:1}
+#stage.cine #top,#stage.cine #biome,#stage.cine #obj,#stage.cine #hint,#stage.cine #slash,#stage.cine #prompt,#stage.cine #boss{opacity:0!important;pointer-events:none}
+#itag{right:16px;top:calc(15% + 8px);z-index:8;font-size:10px;color:var(--mist);opacity:0;transition:opacity .6s}
+#stage.cine #itag{opacity:.7}
 </style>
 <div id="stage">
   <canvas id="c"></canvas>
   <div class="hud" id="hurt"></div>
+  <div id="lbT"></div><div id="lbB"></div><div id="fadeI"></div>
+  <div class="hud" id="icap"></div><div class="hud" id="itag">[tap: skip]</div>
   <div class="hud" id="top">
     <div id="bars">
       <div class="ln" id="hpb"><span class="k">HP</span><span id="hpf"></span></div>
@@ -782,7 +795,7 @@ function hurt(n,fx,fy,kb){
 }
 function vigor(dt){
   var moving=spd>0.5;
-  if(spd>7.2)GM.vig-=6.5*dt;else GM.vig+=(moving?2.5:7)*dt;
+  if(spd>9.3)GM.vig-=6.5*dt;else GM.vig+=(moving?2.5:7)*dt;
   if(GM.vig<=0){GM.vig=0;GM.exh=true;}
   if(GM.vig>100)GM.vig=100;
   if(GM.exh&&GM.vig>25)GM.exh=false;
@@ -1190,6 +1203,46 @@ function showWin(){
   uiStats.textContent='Time '+m+':'+(s%60<10?'0':'')+(s%60)+'   ·   Foes slain '+GM.kills+'   ·   Apples '+GM.eaten+'   ·   Falls '+GM.deaths;
   ovW.classList.add('on');
 }
+var ovF=$('fadeI'),uiCap=$('icap'),stg=$('stage');
+var ICAP=[[0.9,'> the mist took the kingdom.'],[3.8,'> three sigils hold the dark shut.'],[6.8,'> someone has to ride_']];
+GM.it=0;GM.ix=0;GM.iy=0;GM.capKey='';
+GM.beginIntro=function(){
+  if(GM.state!=='title')return;
+  ovT.classList.remove('on');
+  if(typeof AU!=='undefined')AU.start();
+  var p0x=hx,p0y=hy,a0=psi,best=null,k,a,sx,sy;
+  for(k=0;k<8&&!best;k++){
+    a=a0+Math.PI+(k%2?1:-1)*Math.ceil(k/2)*Math.PI/4;
+    sx=p0x+Math.cos(a)*46;sy=p0y+Math.sin(a)*46;
+    if(!isWater(sx,sy)&&!isWater((sx+p0x)/2,(sy+p0y)/2))best=[sx,sy,a];
+  }
+  if(!best){GM.begin();return;}
+  GM.ix=p0x;GM.iy=p0y;
+  hx=best[0];hy=best[1];psi=Math.atan2(p0y-hy,p0x-hx);spd=0;omega=0;
+  GM.it=0;GM.capKey='';GM.state='intro';
+  stg.classList.add('cine');
+  ovF.className='black';void ovF.offsetWidth;ovF.className='fin';
+  uiCap.textContent='';
+};
+function endIntro(){
+  if(GM.state!=='intro')return;
+  GM.state='play';stg.classList.remove('cine');input.mag=0;uiCap.textContent='';
+  toast('RIDE :: FIND WATER FIRST',3000);
+}
+GM.skipIntro=function(){if(GM.state==='intro'&&GM.it>1.0)endIntro();};
+function introTick(dt){
+  GM.it+=dt;var t=GM.it;
+  var dx=GM.ix-hx,dy=GM.iy-hy,l=Math.sqrt(dx*dx+dy*dy)||1;dx/=l;dy/=l;
+  input.dc=(dx-dy)*SX;input.dr=(dx+dy)*SY;input.mag=l<4?0.2:0.5;
+  var out='',i,ln,n;
+  for(i=0;i<ICAP.length;i++){
+    if(t<ICAP[i][0])break;
+    ln=ICAP[i][1];n=Math.min(ln.length,Math.floor((t-ICAP[i][0])*26));
+    out+=(i?'\n':'')+ln.slice(0,n);
+  }
+  if(out!==GM.capKey){GM.capKey=out;uiCap.textContent=out;}
+  if(t>=10||l<1.5&&t>6)endIntro();
+}
 GM.begin=function(){
   if(GM.state!=='title')return;
   GM.state='play';ovT.classList.remove('on');
@@ -1206,6 +1259,7 @@ GM.tick=function(dt,t){
     if(GM.deadT>1.3&&!GM.deadShown){GM.deadShown=true;ovD.classList.add('on');}
     return;
   }
+  if(GM.state==='intro'){GM.dA+=(0-GM.dA)*Math.min(1,dt*5);dA=GM.dA;introTick(dt);return;}
   if(GM.state==='win'||GM.state==='map'){return;}
   GM.tm+=dt;GM.inv=Math.max(0,GM.inv-dt);
   var kd=Math.pow(0.004,dt);GM.kbx*=kd;GM.kby*=kd;
@@ -1441,7 +1495,7 @@ GM.mapOpen=function(){if(GM.state==='play'){GM.state='map';stickReset();showMap(
 GM.mapClose=function(){if(GM.state==='map'){GM.state='play';ovM.classList.remove('on');}};
 mapB.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();if(GM.state==='play')GM.mapOpen();});
 ovM.addEventListener('pointerdown',function(e){e.preventDefault();GM.mapClose();});
-ovT.addEventListener('pointerdown',function(e){e.preventDefault();GM.begin();});
+ovT.addEventListener('pointerdown',function(e){e.preventDefault();GM.beginIntro();});
 ovD.addEventListener('pointerdown',function(e){e.preventDefault();GM.retry();});
 $('again').addEventListener('pointerdown',function(e){e.preventDefault();try{location.reload();}catch(_){}});
 var muteBtn=$('mute');
@@ -1566,9 +1620,11 @@ cv.addEventListener('pointerup',endStick);cv.addEventListener('pointercancel',en
 slashBtn.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();doSlash();slashBtn.classList.add('on');});
 function offBtn(){slashBtn.classList.remove('on');}
 slashBtn.addEventListener('pointerup',offBtn);slashBtn.addEventListener('pointerleave',offBtn);slashBtn.addEventListener('pointercancel',offBtn);
+window.addEventListener('pointerdown',function(){if(GM.state==='intro')GM.skipIntro();},true);
 window.addEventListener('keydown',function(e){
   var k=e.key.toLowerCase();
-  if(GM.state==='title'){GM.begin();return;}
+  if(GM.state==='title'){GM.beginIntro();return;}
+  if(GM.state==='intro'){GM.skipIntro();return;}
   if(GM.state==='map'){GM.mapClose();return;}
   if(k==='m'){GM.mapOpen();return;}
   if(GM.state==='dead'){GM.retry();return;}
@@ -1582,7 +1638,7 @@ window.addEventListener('keyup',function(e){keys[e.key.toLowerCase()]=false;keyI
 function angdiff(a,b){var d=a-b;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;return d;}
 var rainI=0,rainT=0,lightT=0,lightNext=8,camX=0,camY=0,trailAcc=0,purgeAcc=0,biomeName='',biomeTimer=0,dustAcc=0;
 function update(dt,t){
-  var play=GM.state==='play',mag=play?input.mag:0,diff=0;
+  var play=GM.state==='play',mag=(play||GM.state==='intro')?input.mag:0,diff=0;
   var wdes=0,maxRate=3.8-1.8*clamp01(spd/9);
   if(mag>0.05){
     var wxv=input.dc/SX+input.dr/SY,wyv=input.dr/SY-input.dc/SX;
@@ -1594,10 +1650,10 @@ function update(dt,t){
   psi+=omega*dt;
   rollS+=((-omega*0.085*clamp01(spd/9))-rollS)*Math.min(1,dt*6);
   if(rollS>0.3)rollS=0.3;else if(rollS<-0.3)rollS=-0.3;
-  var inW=isWater(hx,hy),vmax=9*(inW?0.55:1)*(GM.exh?0.58:1);
+  var inW=isWater(hx,hy),vmax=11.5*(inW?0.55:1)*(GM.exh?0.58:1);
   var target=mag>0.05?Math.max(2.2,vmax*mag):0;
   if(Math.abs(diff)>1.2)target*=0.6;
-  var dv=target-spd;spd+=Math.max(-12*dt,Math.min(7*dt,dv));
+  var dv=target-spd;spd+=Math.max(-12*dt,Math.min(9*dt,dv));
   if(spd<0.02&&target===0)spd=0;
   hx+=Math.cos(psi)*spd*dt+GM.kbx*dt;hy+=Math.sin(psi)*spd*dt+GM.kby*dt;
   var wW_=1-sstep(2.8,4.2,spd),wG_=sstep(6.0,7.6,spd),wT_=Math.max(0,1-wW_-wG_);
