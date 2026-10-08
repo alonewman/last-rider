@@ -645,8 +645,8 @@ function leg(k,lx,ly,off,A,fa){
 var dA=0,omega=0,rollS=0,slashT=-1,tipX=0,tipY=0,tipZ=0,baseX=0,baseY=0,baseZ=0;
 function buildHorse(t){
   PN=0;cpsi=Math.cos(psi);spsi=Math.sin(psi);
-  var sp=clamp01(spd/11);
-  var wW=1-sstep(2.8,4.2,spd),wG=sstep(7.0,9.0,spd),wT=Math.max(0,1-wW-wG),ph=phase,mv=clamp01(spd*0.8);
+  var sp=clamp01(spd/14);
+  var wW=1-sstep(2.8,4.2,spd),wG=sstep(8.5,11.0,spd),wT=Math.max(0,1-wW-wG),ph=phase,mv=clamp01(spd*0.8);
   var A=(wW*0.34+wT*0.50+wG*0.80)*mv,fa=wW*0.3+wT*0.7+wG*1.35;
   bob=wW*0.03*Math.abs(Math.sin(ph))*mv+wT*0.17*Math.abs(Math.sin(ph))+wG*0.36*Math.pow(0.5+0.5*Math.sin(ph+1.1),1.3)+0.012*Math.sin(t*2.1);
   var rock=wW*0.02*Math.sin(ph)*mv+wT*0.04*Math.sin(2*ph)+wG*0.17*Math.sin(ph+0.4);
@@ -795,7 +795,7 @@ function hurt(n,fx,fy,kb){
 }
 function vigor(dt){
   var moving=spd>0.5;
-  if(spd>11.6)GM.vig-=6.5*dt;else GM.vig+=(moving?2.5:7)*dt;
+  if(spd>14.4)GM.vig-=6.5*dt;else GM.vig+=(moving?2.5:7)*dt;
   if(GM.vig<=0){GM.vig=0;GM.exh=true;}
   if(GM.vig>100)GM.vig=100;
   if(GM.exh&&GM.vig>25)GM.exh=false;
@@ -931,8 +931,8 @@ function updateEnemies(dt,t){
       if(od<2.6&&od>0.0001){od=Math.sqrt(od);e.x+=ox/od*2.2*dt;e.y+=oy/od*2.2*dt;}
     }
     if(e.st!=='dash'&&d<1.9&&e.st!=='wind'){e.x-=dx/d*(2.0-d)*0.6;e.y-=dy/d*(2.0-d)*0.6;}
-    if(spd>6.4&&d<2.2&&(ty==='g'||ty==='h'||ty==='a')){spd*=0.78;killEnemy(e,7+spd*0.8);continue;}
-    if(spd>6.4&&d<3.0&&(ty==='b'||ty==='m')&&e.stomp<=0){
+    if(spd>7.5&&d<2.2&&(ty==='g'||ty==='h'||ty==='a')){spd*=0.78;killEnemy(e,7+spd*0.8);continue;}
+    if(spd>7.5&&d<3.0&&(ty==='b'||ty==='m')&&e.stomp<=0){
       e.stomp=1.0;e.hp--;e.flash=0.18;spd*=0.5;sfx('hit');
       if(e.hp<=0){killEnemy(e,8);continue;}
     }
@@ -1639,7 +1639,7 @@ function angdiff(a,b){var d=a-b;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+
 var rainI=0,rainT=0,lightT=0,lightNext=8,camX=0,camY=0,trailAcc=0,purgeAcc=0,biomeName='',biomeTimer=0,dustAcc=0;
 function update(dt,t){
   var play=GM.state==='play',mag=(play||GM.state==='intro')?input.mag:0,diff=0;
-  var wdes=0,maxRate=3.8-1.8*clamp01(spd/11);
+  var wdes=0,maxRate=3.8-1.8*clamp01(spd/14);
   if(mag>0.05){
     var wxv=input.dc/SX+input.dr/SY,wyv=input.dr/SY-input.dc/SX;
     diff=angdiff(Math.atan2(wyv,wxv),psi);
@@ -1648,15 +1648,15 @@ function update(dt,t){
   }
   omega+=(wdes-omega)*Math.min(1,dt*7);
   psi+=omega*dt;
-  rollS+=((-omega*0.085*clamp01(spd/11))-rollS)*Math.min(1,dt*6);
+  rollS+=((-omega*0.085*clamp01(spd/14))-rollS)*Math.min(1,dt*6);
   if(rollS>0.3)rollS=0.3;else if(rollS<-0.3)rollS=-0.3;
-  var inW=isWater(hx,hy),vmax=14*(inW?0.55:1)*(GM.exh?0.58:1);
+  var inW=isWater(hx,hy),vmax=17.5*(inW?0.55:1)*(GM.exh?0.58:1);
   var target=mag>0.05?Math.max(2.2,vmax*mag):0;
   if(Math.abs(diff)>1.2)target*=0.6;
-  var dv=target-spd;spd+=Math.max(-12*dt,Math.min(11*dt,dv));
+  var dv=target-spd;spd+=Math.max(-12*dt,Math.min(14*dt,dv));
   if(spd<0.02&&target===0)spd=0;
   hx+=Math.cos(psi)*spd*dt+GM.kbx*dt;hy+=Math.sin(psi)*spd*dt+GM.kby*dt;
-  var wW_=1-sstep(2.8,4.2,spd),wG_=sstep(7.0,9.0,spd),wT_=Math.max(0,1-wW_-wG_);
+  var wW_=1-sstep(2.8,4.2,spd),wG_=sstep(8.5,11.0,spd),wT_=Math.max(0,1-wW_-wG_);
   phase+=dt*(spd>0.2?(wW_*(3.2+spd*0.9)+wT_*(8+spd*0.55)+wG_*(10.5+spd*0.32)):0);
   /* golpe */
   if(slashT>=0){
@@ -1668,7 +1668,7 @@ function update(dt,t){
     }else slashT=-1;
   }
   /* poeira / respingos */
-  var sp=clamp01(spd/11);
+  var sp=clamp01(spd/14);
   if(sp>0.15){
     dustAcc+=dt*60*sp*0.6;
     while(dustAcc>=1){
