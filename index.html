@@ -1105,25 +1105,33 @@ function interact(dt,t){
       GM.hold+=dt;
       psi+=angdiff(Math.atan2(o.y-hy,o.x-hx),psi)*Math.min(1,dt*4);
       if(GM.hold>0.4){
+        var full=GM.hp>=99.5&&GM.vig>=99.5;
         if(o.k==='well'){
-          GM.dwell=(GM.dwell||0)+dt;want=1;show='Drinking…';
-          GM.vig=Math.min(100,GM.vig+70*dt);GM.hp=Math.min(100,GM.hp+9*dt);GM.exh=false;
-          prog=Math.min(1,GM.dwell/(1.6));
-          if(GM.nextSip===undefined||t>GM.nextSip){GM.nextSip=t+0.28;sfx('drink');spawn('splash',hx+Math.cos(psi)*3.4,hy+Math.sin(psi)*3.4,0.6,(Math.random()-0.5)*1.5,(Math.random()-0.5)*1.5,2.5,0.5,190,232,255);}
-          if(GM.dwell>=1.6&&GM.vig>=99.5&&GM.hp>=99){if(!GM.drank){GM.drank=true;toast('WATER :: VIGOR RESTORED',1400,true);}if(GM.dwell>3)GM.dwell=3;}
-          else if(GM.dwell>=1.6&&!GM.drank){GM.drank=true;}
+          if(full){
+            show='HP and VG full';if(!GM.drank){GM.drank=true;toast('WATER :: ALL FULL',1200,true);}GM.dwell=0;
+          }else{
+            GM.dwell=(GM.dwell||0)+dt;want=1;show='Drinking...';
+            GM.vig=Math.min(100,GM.vig+70*dt);GM.hp=Math.min(100,GM.hp+9*dt);GM.exh=false;
+            prog=Math.min(1,(GM.hp+GM.vig)/200);
+            if(GM.nextSip===undefined||t>GM.nextSip){GM.nextSip=t+0.28;sfx('drink');spawn('splash',hx+Math.cos(psi)*3.4,hy+Math.sin(psi)*3.4,0.6,(Math.random()-0.5)*1.5,(Math.random()-0.5)*1.5,2.5,0.5,190,232,255);}
+            if(GM.hp>=99.5&&GM.vig>=99.5){GM.drank=true;toast('FULL',900,true);}
+            else if(GM.dwell>1.6)GM.drank=true;
+          }
         }else{
-          GM.eatT=(GM.eatT||0)+dt;want=0.52+0.08*Math.sin(t*16);show='Eating apples…';prog=Math.min(1,GM.eatT/1.0);
-          if(GM.eatT>=1.0){
-            GM.eatT=0;
-            if(takeApple(o.key)){
-              GM.hp=Math.min(100,GM.hp+18);GM.vig=Math.min(100,GM.vig+12);GM.eaten++;GM.ate=true;sfx('eat');toast('+18 HP',900,true);
-              for(var i=0;i<8;i++)spawn('leaf',hx+Math.cos(psi)*3,hy+Math.sin(psi)*3,2.5,(Math.random()-0.5)*3,(Math.random()-0.5)*3,1+Math.random()*2,0.8,255,70,80);
+          if(full){show='HP and VG full';if(!GM.ate)GM.ate=true;GM.eatT=0;}
+          else{
+            GM.eatT=(GM.eatT||0)+dt;want=0.52+0.08*Math.sin(t*16);show='Eating apples...';prog=Math.min(1,GM.eatT/1.0);
+            if(GM.eatT>=1.0){
+              GM.eatT=0;
+              if(takeApple(o.key)){
+                GM.hp=Math.min(100,GM.hp+18);GM.vig=Math.min(100,GM.vig+12);GM.eaten++;GM.ate=true;sfx('eat');toast('+18 HP',900,true);
+                for(var i=0;i<8;i++)spawn('leaf',hx+Math.cos(psi)*3,hy+Math.sin(psi)*3,2.5,(Math.random()-0.5)*3,(Math.random()-0.5)*3,1+Math.random()*2,0.8,255,70,80);
+              }
             }
           }
         }
       }
-    }else{GM.hold=0;GM.dwell=0;GM.eatT=0;}
+        }else{GM.hold=0;GM.dwell=0;GM.eatT=0;}
   }else{GM.hold=0;GM.dwell=0;GM.eatT=0;}
   GM.dA+=(want-GM.dA)*Math.min(1,dt*5);
   dA=GM.dA;
