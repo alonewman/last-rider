@@ -181,7 +181,7 @@ function resize(){
   W=cv.clientWidth||window.innerWidth||360;H=cv.clientHeight||window.innerHeight||640;
   dpr=Math.min(window.devicePixelRatio||1,2);
   cv.width=Math.max(1,Math.round(W*dpr));cv.height=Math.max(1,Math.round(H*dpr));
-  cw=Math.max(3.9,Math.min(8,W/84));if(window.__forceCW)cw=window.__forceCW;ch=cw/ASP;
+  cw=Math.max(3.6,Math.min(8,W/100));if(window.__forceCW)cw=window.__forceCW;ch=cw/ASP;
   cols=Math.max(20,Math.floor(W/cw));rows=Math.max(20,Math.floor(H/ch));
   N=cols*rows;
   chB=new Array(N);
