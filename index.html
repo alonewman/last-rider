@@ -24,7 +24,7 @@ body{margin:0;background:var(--ink);color:var(--moon);overflow:hidden;touch-acti
 #cmpwrap{color:var(--gold)}
 #cmpa{font-weight:700;font-size:15px}
 #btns{display:flex;gap:4px;margin-top:2px}
-#mapb,#mute{pointer-events:auto;background:rgba(5,8,22,.55);border:1px solid rgba(143,180,204,.4);color:var(--mist);font:inherit;font-size:10px;padding:3px 6px;border-radius:0;cursor:pointer}
+#pauseb,#mapb,#mute{pointer-events:auto;background:rgba(5,8,22,.55);border:1px solid rgba(143,180,204,.4);color:var(--mist);font:inherit;font-size:10px;padding:3px 6px;border-radius:0;cursor:pointer}
 #obj{left:12px;right:132px;top:calc(max(10px,env(safe-area-inset-top)) + 60px);text-align:left;font-size:11px;line-height:1.35;color:var(--moon);text-shadow:0 1px 6px #000,0 0 3px #000;padding:0;white-space:normal}
 #biome{left:12px;top:calc(max(10px,env(safe-area-inset-top)) + 46px);font-size:10px;color:var(--mist);opacity:.9;transition:color .6s}
 #biome.flash{color:var(--gold)}
@@ -99,6 +99,7 @@ pre.art{margin:0 0 16px;font-family:var(--font-mono);font-weight:700;font-size:m
 button.sel{box-shadow:0 0 0 1px var(--moon),0 0 14px rgba(232,180,90,.45);background:rgba(232,180,90,.16)}
 button.sel::before{content:'> '}
 #pkeys{white-space:pre;text-align:left}
+#ovp,#ovm{background:rgba(3,5,14,.88)}
 /* escala da interface em telas grandes (--ui definido em resize) */
 #top,#biome,#obj,#boss,#toast,#prompt,#pbar,#hint,#fmsg,#slash,#dash,#icap,#itag,.ov>:not(#mapart),#talk>*{zoom:var(--ui,1)}
 </style>
@@ -115,7 +116,7 @@ button.sel::before{content:'> '}
     <div id="right">
       <div id="sigs">SIGILS [ ][ ][ ]</div>
       <div id="cmpwrap"><span id="cmpa">→</span> <span id="cmpd">  0m</span><span id="cmp"></span></div>
-      <div id="btns"><button id="mapb" type="button">[MAP]</button><button id="mute" type="button">[SND:ON]</button></div>
+      <div id="btns"><button id="pauseb" type="button">[II]</button><button id="mapb" type="button">[MAP]</button><button id="mute" type="button">[SND:ON]</button></div>
     </div>
   </div>
   <div class="hud" id="biome"></div>
@@ -172,7 +173,9 @@ or you may let him speak.</div>
   </div>
   <div class="ov" id="ovp" style="cursor:default">
     <pre class="art" style="font-size:min(4vw,20px)">&gt; PAUSED_</pre>
-    <div><button class="btn2" id="resume" type="button">[ RESUME ]</button><button class="btn2" id="psnd" type="button">[ SOUND: ON ]</button><button class="btn2 k" id="quit" type="button">[ SAVE &amp; QUIT ]</button></div>
+    <div><button class="btn2" id="resume" type="button">[ RESUME ]</button></div>
+    <div><button class="btn2" id="psnd" type="button">[ VOLUME: 100% ]</button><button class="btn2" id="pfx" type="button">[ EFFECTS: FULL ]</button><button class="btn2" id="pfull" type="button">[ FULLSCREEN ]</button></div>
+    <div><button class="btn2 k" id="quit" type="button">[ SAVE &amp; QUIT ]</button></div>
     <div class="how" id="pkeys"></div>
   </div>
 </div>
@@ -1684,7 +1687,7 @@ ovT.addEventListener('pointerdown',function(e){e.preventDefault();titleGo();});
 ovD.addEventListener('pointerdown',function(e){e.preventDefault();GM.retry();});
 $('again').addEventListener('pointerdown',function(e){e.preventDefault();try{location.reload();}catch(_){}});
 var muteBtn=$('mute');
-muteBtn.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();AU.mute(!AU.isMuted());syncSnd();});
+muteBtn.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();setVol(OPT.vol>0?0:(lastVol||1));});
 
 /* ---------- campanha: upgrades, dash, cercas, baús, lore, diálogo, bomba, finais ---------- */
 var UP_SPD=0.9,SAVEKEY='lastrider_v2';
@@ -2708,7 +2711,7 @@ window.__gm={GM:GM,E:E,B:B,CAMPS:CAMPS,ARENA:ARENA,ARENAS:ARENAS,HERMIT:HERMIT,S
 
 /* ---------- áudio: sequenciador chiptune + efeitos (WebAudio) ---------- */
 var AU=(function(){
-  var AC=window.AudioContext||window.webkitAudioContext,ac=null,master=null,noiseBuf=null,level=0,step=0,nextT=0,timer=null,muted=false,on=false,rainSrc=null,rainG=null;
+  var AC=window.AudioContext||window.webkitAudioContext,ac=null,master=null,noiseBuf=null,level=0,step=0,nextT=0,timer=null,muted=false,vol=1,on=false,rainSrc=null,rainG=null;
   var THEMES={
     wood:{r:[57,53,60,55,57,53,55,52],m:[1,0,0,0,1,0,0,0],b:1,w:'square'},
     fen:{r:[50,50,53,48,50,50,46,48],m:[1,1,0,0,1,1,0,0],b:0.8,w:'triangle'},
@@ -2757,7 +2760,7 @@ var AU=(function(){
     start:function(){
       if(!AC||on)return;
       try{
-        ac=new AC();master=ac.createGain();master.gain.value=muted?0:0.5;master.connect(ac.destination);
+        ac=new AC();master=ac.createGain();master.gain.value=muted?0:0.5*vol;master.connect(ac.destination);
         var n=ac.sampleRate*1,b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);for(var i=0;i<n;i++)d[i]=Math.random()*2-1;noiseBuf=b;
         on=true;nextT=ac.currentTime+0.1;timer=setInterval(loop,40);
         document.addEventListener('visibilitychange',function(){if(!ac)return;if(document.hidden)ac.suspend();else if(GM.state!=='pause')ac.resume();});
@@ -2768,9 +2771,10 @@ var AU=(function(){
     rain:function(v){
       if(!on)return;
       if(!rainSrc){var s=ac.createBufferSource(),f=ac.createBiquadFilter();rainG=ac.createGain();s.buffer=noiseBuf;s.loop=true;f.type='bandpass';f.frequency.value=3200;f.Q.value=0.5;rainG.gain.value=0;s.connect(f);f.connect(rainG);rainG.connect(ac.destination);s.start();rainSrc=s;}
-      rainG.gain.setTargetAtTime(muted?0:v*0.09,ac.currentTime,0.3);
+      rainG.gain.setTargetAtTime(muted?0:v*0.09*vol,ac.currentTime,0.3);
     },
-    mute:function(m){muted=m;if(master)master.gain.value=m?0:0.5;},
+    mute:function(m){muted=m;if(master)master.gain.value=m?0:0.5*vol;},
+    vol:function(v){vol=v;muted=v<=0;if(master)master.gain.value=muted?0:0.5*vol;},
     pause:function(p){if(!ac)return;try{if(p)ac.suspend();else ac.resume();}catch(e){}},
     isMuted:function(){return muted;},
     sfx:function(n){
@@ -2801,6 +2805,7 @@ var AU=(function(){
   };
   return api;
 })();
+window.__gm.AU=AU;
 
 /* ---------- entrada ---------- */
 var input={dc:0,dr:0,mag:0},keys={},stickId=null,sox=0,soy=0,STICK_R=56;
@@ -2878,7 +2883,7 @@ window.addEventListener('keydown',function(e){
 window.addEventListener('keyup',function(e){keys[e.key.toLowerCase()]=false;keyInput();});
 
 /* ---------- menus navegáveis (teclado / controle) ---------- */
-var MENUS={title:['ride','cont','newg','qgame'],choice:['kill','spare'],end:['keep','again'],pause:['resume','psnd','quit']},menuSel={};
+var MENUS={title:['ride','cont','newg','qgame'],choice:['kill','spare'],end:['keep','again'],pause:['resume','psnd','pfx','pfull','quit']},menuSel={};
 function menuItems(st){
   var ids=MENUS[st],out=[];if(!ids)return out;
   for(var i=0;i<ids.length;i++){var el=$(ids[i]);if(el&&el.offsetParent!==null)out.push(el);}
@@ -2902,9 +2907,27 @@ function pauseGame(){
   GM.state='pause';releaseInput();menuSel.pause=0;ovP.classList.add('on');AU.pause(true);syncSnd();
 }
 function resumeGame(){if(GM.state!=='pause')return;GM.state='play';ovP.classList.remove('on');AU.pause(false);}
-function syncSnd(){var m=AU.isMuted();muteBtn.textContent=m?'[SND:OFF]':'[SND:ON]';psndB.textContent=m?'[ SOUND: OFF ]':'[ SOUND: ON ]';}
+/* ---------- opções (salvas à parte do progresso) ---------- */
+var OPT={vol:1,fx:1},lastVol=1,OPTKEY='lastrider_opts';
+try{var o_=JSON.parse(localStorage.getItem(OPTKEY));if(o_){if(typeof o_.vol==='number')OPT.vol=Math.max(0,Math.min(1,o_.vol));if(o_.fx===0)OPT.fx=0;}}catch(e){}
+function saveOpts(){try{localStorage.setItem(OPTKEY,JSON.stringify(OPT));}catch(e){}}
+function setVol(v){OPT.vol=v;if(v>0)lastVol=v;AU.vol(v);saveOpts();syncSnd();}
+function syncSnd(){
+  var v=OPT.vol;muteBtn.textContent=v>0?'[SND:ON]':'[SND:OFF]';
+  psndB.textContent='[ VOLUME: '+(v>0?Math.round(v*100)+'%':'OFF')+' ]';
+  $('pfx').textContent=OPT.fx?'[ EFFECTS: FULL ]':'[ EFFECTS: REDUCED ]';
+}
+function toggleFull(){
+  if(window.desktop){window.desktop.toggleFullscreen();return;}
+  var d=document;
+  try{if(d.fullscreenElement)d.exitFullscreen();else if(d.documentElement.requestFullscreen)d.documentElement.requestFullscreen().catch(function(){});}catch(e){}
+}
+$('pauseb').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();pauseGame();});
 $('resume').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();resumeGame();});
-psndB.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();AU.mute(!AU.isMuted());syncSnd();});
+psndB.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();var L=[1,0.7,0.4,0],i=L.indexOf(OPT.vol);setVol(L[(i+1)%L.length]);});
+$('pfx').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();OPT.fx=OPT.fx?0:1;saveOpts();syncSnd();});
+$('pfull').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();toggleFull();});
+AU.vol(OPT.vol);syncSnd();
 $('quit').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();saveGame();if(window.desktop)window.desktop.quit();else try{location.reload();}catch(_){}});
 /* versão desktop (Electron): sair do jogo pela tela título */
 if(window.desktop){document.body.classList.add('desk');$('qgame').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();window.desktop.quit();});}
@@ -3039,7 +3062,7 @@ function update(dt,t){
   }
   GM.tick(dt,t);
   var fm=GM.fenceMsg||'';if(fmsgEl._m!==fm){fmsgEl._m=fm;fmsgEl.textContent=fm;fmsgEl.classList.toggle('on',!!fm);}
-  var fl=GM.flashT>0?Math.min(1,GM.flashT*1.6):0;if(flashEl._f!==fl){flashEl._f=fl;flashEl.style.opacity=fl;}
+  var fl=GM.flashT>0?Math.min(1,GM.flashT*1.6):0;if(!OPT.fx)fl=Math.min(0.25,fl*0.25);if(flashEl._f!==fl){flashEl._f=fl;flashEl.style.opacity=fl;}
   rainI+=(rainT-rainI)*Math.min(1,dt*0.7);
   if(rainI>0.3){lightNext-=dt;if(lightNext<=0){lightT=0.35;lightNext=9+Math.random()*12;setTimeout(function(){AU.sfx('thunder');},300+Math.random()*700);}}
   if(lightT>0)lightT-=dt;
@@ -3073,7 +3096,7 @@ function update(dt,t){
 /* ---------- apresentação ---------- */
 function present(){
   ctx.fillStyle=BGC;ctx.fillRect(0,0,W,H);
-  var lf=lightT>0?Math.min(1,lightT*3):0;
+  var lf=lightT>0?Math.min(1,lightT*3)*(OPT.fx?1:0.3):0;
   counts.fill(0);
   var hr=rows*0.5,hc=cols*0.5,hazeRow=rows*0.45;
   for(var r=0;r<rows;r++){
@@ -3121,7 +3144,7 @@ function render(t){
   drawRain(t);
   var fx=(hx-hy)*SX,fy=(hx+hy)*SY;
   shX=-(fx-Math.round(fx))*cw;shY=-(fy-Math.round(fy))*ch;
-  if(GM.shake>0){var sk=Math.min(1,GM.shake)*5;shX+=(Math.random()-0.5)*sk*2;shY+=(Math.random()-0.5)*sk*2;}
+  if(GM.shake>0&&OPT.fx){var sk=Math.min(1,GM.shake)*5;shX+=(Math.random()-0.5)*sk*2;shY+=(Math.random()-0.5)*sk*2;}
   present();
 }
 function drawRain(t){
