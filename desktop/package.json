@@ -8,9 +8,10 @@
   "scripts": {
     "prepare-game": "node scripts/copy-game.mjs",
     "start": "npm run prepare-game && electron .",
-    "package:linux": "npm run prepare-game && electron-packager . \"Last Rider\" --platform=linux --arch=x64 --out=dist --overwrite --prune=true --ignore=^/dist --ignore=^/scripts",
-    "package:win": "npm run prepare-game && electron-packager . \"Last Rider\" --platform=win32 --arch=x64 --out=dist --overwrite --prune=true --ignore=^/dist --ignore=^/scripts",
-    "smoke": "npm run prepare-game && node scripts/smoke.mjs"
+    "package:linux": "npm run prepare-game && electron-packager . \"Last Rider\" --platform=linux --arch=x64 --out=dist --overwrite --prune=true --ignore=^/dist --ignore=^/scripts --icon=build/icon --app-version=0.1.0 --app-copyright=\"Ricardo Neumann\"",
+    "package:win": "npm run prepare-game && electron-packager . \"Last Rider\" --platform=win32 --arch=x64 --out=dist --overwrite --prune=true --ignore=^/dist --ignore=^/scripts --icon=build/icon --app-version=0.1.0 --app-copyright=\"Ricardo Neumann\" --win32metadata.ProductName=\"Last Rider\" --win32metadata.FileDescription=\"Last Rider\" --win32metadata.CompanyName=\"Ricardo Neumann\"",
+    "smoke": "npm run prepare-game && node scripts/smoke.mjs",
+    "icon": "node scripts/make-icon.mjs"
   },
   "devDependencies": {
     "@electron/packager": "18.3.6",

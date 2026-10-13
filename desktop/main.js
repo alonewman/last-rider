@@ -12,6 +12,7 @@ function createWindow() {
     fullscreen: !process.argv.includes('--windowed'),
     backgroundColor: '#050816',
     title: 'Last Rider',
+    icon: path.join(__dirname, 'build', 'icon.png'),
     autoHideMenuBar: true,
     show: false,
     webPreferences: {
