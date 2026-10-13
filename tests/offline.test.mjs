@@ -23,3 +23,15 @@ test('runs fully offline: no network requests, bundled font loads', async () => 
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });
+
+test('standards mode and utf-8 glyphs', async () => {
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage();
+    await page.goto(GAME_URL);
+    const r = await page.evaluate(() => ({ mode: document.compatMode, cs: document.characterSet, arrow: document.getElementById('cmpa').textContent }));
+    assert.equal(r.mode, 'CSS1Compat');
+    assert.equal(r.cs, 'UTF-8');
+    assert.equal(r.arrow, '→');
+  } finally { await browser.close(); }
+});
