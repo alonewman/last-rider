@@ -47,7 +47,7 @@ The state machine lives in `GM.state`: `title | intro | play | pause | map | tal
 
 **Partial or unverified:**
 - **Balance and difficulty:** never playtested by a human in this session; the bot bypasses fights.
-- **Length:** unknown. The campaign is small: 4 camps, 3 guardians and 1 final fight, plus 18 chests and 5 lore stones. It probably runs well under 2 hours.
+- **Length and pacing (bot data, 12 min, `npm run playbot`):** a non-dodging bot finished the whole tutorial chain (well → tree → scouts → sigil) in **20 s** and killed the Stone Guardian on its 7th try about **3 min** in. It reached the Mire Guardian about 3.5 min in, then failed it 17 times (never below 23/70 HP: the fight needs real window-reading). Guardians reset to full HP when you die. Content: 4 camps, 3 guardians, 1 final fight, 18 chests, 5 lore stones. A human campaign is likely **well under an hour**, which is the main commercial gap. Needs a timed human playtest.
 - **Windows build:** packaged but not run (there's no Windows/Wine in the container).
 
 **Missing for a premium PC release:** key rebinding, separate music/SFX volume, Steamworks (achievements, cloud saves), final app icon and key art (the current icon is a typographic placeholder), code signing, a store page and capsule art, a trailer, and enough content and depth for the price point.
