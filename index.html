@@ -92,7 +92,8 @@ pre.art{margin:0 0 16px;font-family:var(--font-mono);font-weight:700;font-size:m
 #tkh{font-size:10px;color:var(--mist);text-align:right;margin-top:6px;animation:pulse 1.2s steps(2) infinite}
 .btn2{margin:8px 6px 0;background:none;border:1px solid var(--gold);color:var(--gold);font-family:var(--font-mono);font-weight:700;font-size:14px;padding:10px 20px;cursor:pointer;border-radius:0}
 .btn2.k{border-color:var(--red);color:var(--red)}
-#cont{display:none;margin-top:12px}
+#cont,#newg{display:none;margin-top:12px}
+#ovt.saved #cont,#ovt.saved #newg{display:inline-block}
 #stage.cine #dash{opacity:0!important;pointer-events:none}
 </style>
 <div id="stage">
@@ -134,8 +135,8 @@ pre.art{margin:0 0 16px;font-family:var(--font-mono);font-weight:700;font-size:m
     <div class="sub">&gt; the mist took the kingdom.
 &gt; three guardians hold the dark shut.
 &gt; someone has to ride_</div>
-    <div class="tap">[ TAP TO RIDE ]</div>
-    <button class="btn2" id="cont" type="button">[ CONTINUE ]</button>
+    <div class="tap" id="ttap">[ TAP TO RIDE ]</div>
+    <div><button class="btn2" id="cont" type="button">[ CONTINUE ]</button><button class="btn2 k" id="newg" type="button">[ NEW GAME ]</button></div>
     <div class="how">drag to steer · [DASH] spends stamina · gallop fast to leap fences · find chests to ride faster · drink at wells, eat under trees</div>
   </div>
   <div class="ov" id="ovm">
@@ -1306,6 +1307,12 @@ function interact(dt,t){
 function objective(){
   var tx=0,ty=0,txt='',i;
   var bossOn=B.st!=='dormant'&&B.st!=='dead'&&B.st!=='dying';
+  if(GM.post){
+    var bc=null,bd=1e9;
+    for(i=0;i<CHESTS.length;i++){var cc=CHESTS[i];if(cc.open)continue;var cd=hdist(cc.x,cc.y);if(cd<bd){bd=cd;bc=cc;}}
+    if(bc)return {x:bc.x,y:bc.y,txt:'Ride the mist-lands :: find the last chests ('+GM.found+'/'+CHESTS.length+')'};
+    return {x:hx,y:hy,txt:'Ride the mist-lands :: mend what was broken'};
+  }
   if(GM.act>=3){
     if(GM.finalSt==='walk'){tx=GM.hf.x;ty=GM.hf.y;txt='Follow the Hermit';}
     else if(GM.finalSt==='fight'){tx=B.x;ty=B.y;txt='Tear off the Hermit\'s legs';}
@@ -1660,7 +1667,7 @@ GM.mapOpen=function(){if(GM.state==='play'){GM.state='map';stickReset();showMap(
 GM.mapClose=function(){if(GM.state==='map'){GM.state='play';ovM.classList.remove('on');}};
 mapB.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();if(GM.state==='play')GM.mapOpen();});
 ovM.addEventListener('pointerdown',function(e){e.preventDefault();GM.mapClose();});
-ovT.addEventListener('pointerdown',function(e){e.preventDefault();GM.beginIntro();});
+ovT.addEventListener('pointerdown',function(e){e.preventDefault();titleGo();});
 ovD.addEventListener('pointerdown',function(e){e.preventDefault();GM.retry();});
 $('again').addEventListener('pointerdown',function(e){e.preventDefault();try{location.reload();}catch(_){}});
 var muteBtn=$('mute');
@@ -1834,7 +1841,8 @@ function saveGame(){
     var ch=[];for(var i=0;i<CHESTS.length;i++)ch.push(CHESTS[i].open?1:0);
     var cm=[];for(var j=0;j<CAMPS.length;j++)cm.push(CAMPS[j].cleared?1:0);
     localStorage.setItem(SAVEKEY,JSON.stringify({v:2,act:GM.act,gdead:GM.gdead,sig:GM.sig,up:GM.up,hpMax:GM.hpMax,vgMax:GM.vgMax,leg:GM.leg,limp:GM.limp,regrown:GM.regrown,
-      dark:GM.dark,decay:GM.decay,post:GM.post,ch:ch,cm:cm,cp:GM.cp,drank:GM.drank,ate:GM.ate,found:GM.found,lore:GM.lore,bombed:GM.bombed,foot:GM.foot,corpse:GM.corpse,hm:GM.hermitMet}));
+      dark:GM.dark,decay:GM.decay,post:GM.post,ch:ch,cm:cm,cp:GM.cp,drank:GM.drank,ate:GM.ate,found:GM.found,lore:GM.lore,bombed:GM.bombed,foot:GM.foot,corpse:GM.corpse,hm:GM.hermitMet,
+      tm:GM.tm,kills:GM.kills,deaths:GM.deaths,ending:GM.ending}));
   }catch(e){}
 }
 function hasSave(){try{var s=localStorage.getItem(SAVEKEY);return !!s&&JSON.parse(s).v===2;}catch(e){return false;}}
@@ -1843,12 +1851,15 @@ function loadGame(){
     var d=JSON.parse(localStorage.getItem(SAVEKEY));if(!d||d.v!==2)return false;
     GM.act=d.act;GM.gdead=d.gdead;GM.sig=d.sig;GM.up=d.up;GM.hpMax=d.hpMax;GM.vgMax=d.vgMax;GM.leg=d.leg;GM.limp=d.limp;GM.regrown=d.regrown;GM.dark=d.dark;GM.decay=d.decay;
     GM.post=d.post;GM.cp=d.cp;GM.drank=d.drank;GM.ate=d.ate;GM.found=d.found;GM.lore=d.lore||{};GM.bombed=d.bombed;GM.foot=d.foot;GM.corpse=d.corpse;GM.hermitMet=d.hm;
+    GM.tm=d.tm||0;GM.kills=d.kills||0;GM.deaths=d.deaths||0;GM.ending=d.ending||0;
     GM.sigils=(GM.sig[0]?1:0)+(GM.sig[1]?1:0)+(GM.sig[2]?1:0);
-    for(var i=0;i<CHESTS.length;i++)CHESTS[i].open=!!d.ch[i];
-    for(var j=0;j<CAMPS.length;j++)CAMPS[j].cleared=!!d.cm[j];
+    for(var i=0;i<CHESTS.length;i++)CHESTS[i].open=!!(d.ch&&d.ch[i]);
+    for(var j=0;j<CAMPS.length;j++)CAMPS[j].cleared=!!(d.cm&&d.cm[j]);
     applyLook(GM.regrown?4:GM.dark);
     GM.hp=GM.hpMax;GM.vig=GM.vgMax;
-    if(GM.act>=3){GM.act=3;setAct(3,true);}else setAct(GM.act,true);
+    /* fim alcançado (poupou o Eremita): volta ao passeio livre, não à luta final */
+    if(GM.act>=4||GM.ending===2){setAct(3,true);GM.act=4;GM.post=true;GM.finalSt='done';B.st='dead';B.kind='none';}
+    else if(GM.act>=3){GM.act=3;setAct(3,true);}else setAct(GM.act,true);
     if(GM.cp&&GM.cp.x!==undefined){hx=GM.cp.x;hy=GM.cp.y;}
     return true;
   }catch(e){return false;}
@@ -2037,7 +2048,7 @@ function showEnding(kind){
   stats.textContent='Time '+m+':'+(t%60<10?'0':'')+(t%60)+'   ·   Foes slain '+GM.kills+'   ·   Chests '+GM.found+'/'+CHESTS.length+'   ·   Falls '+GM.deaths;
   $('ovw').classList.add('on');
   AU.theme(kind===1?'end':'tense');
-  if(kind===1)saveGame();
+  if(kind===1){GM.finalSt='done';saveGame();}
 }
 function keepRiding(){
   $('ovw').classList.remove('on');GM.state='play';GM.post=true;
@@ -2832,7 +2843,7 @@ slashBtn.addEventListener('pointerup',offBtn);slashBtn.addEventListener('pointer
 window.addEventListener('pointerdown',function(){if(GM.state==='intro')GM.skipIntro();},true);
 window.addEventListener('keydown',function(e){
   var k=e.key.toLowerCase();
-  if(GM.state==='title'){newGame();return;}
+  if(GM.state==='title'){if(k==='enter'||k===' '){titleGo();e.preventDefault();}return;}
   if(GM.state==='intro'){GM.skipIntro();return;}
   if(GM.state==='map'){GM.mapClose();return;}
   if(k==='m'){GM.mapOpen();return;}
@@ -3054,8 +3065,23 @@ function contGame(){
   if(!loadGame()){newGame();return;}
   GM.begin();toast('WELCOME BACK :: RIDE',2600);
 }
-var contB=document.getElementById('cont');
-if(contB){if(hasSave())contB.style.display='';contB.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();contGame();});}
+/* tela título: com save, tocar/Enter continua; NEW GAME pede confirmação antes de apagar */
+var contB=$('cont'),newB=$('newg'),tTap=$('ttap'),newArm=0;
+function refreshTitle(){
+  var sv=hasSave();
+  ovT.classList.toggle('saved',sv);
+  tTap.textContent=sv?'[ TAP TO CONTINUE ]':'[ TAP TO RIDE ]';
+  newArm=0;newB.textContent='[ NEW GAME ]';
+}
+function titleGo(){if(GM.state!=='title')return;if(hasSave())contGame();else newGame();}
+contB.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();contGame();});
+newB.addEventListener('pointerdown',function(e){
+  e.preventDefault();e.stopPropagation();
+  if(GM.state!=='title')return;
+  if(!newArm){newArm=1;newB.textContent='[ ERASE SAVE? CLICK AGAIN ]';return;}
+  newGame();
+});
+refreshTitle();
 window.__cav={bytes:frameBytes,hdr:function(){return {cols:cols,rows:rows,shX:shX,shY:shY,cw:cw,ch:ch};},
   tp:function(x,y,p,sp){hx=x;hy=y;psi=p;spd=sp||0;omega=0;rollS=0;trail.clear();parts.length=0;},
   pos:function(){return [hx,hy,psi,spd];},input:input,slash:doSlash,dash:doDash,frame:frame,dump:dump,resize:resize,full:function(){return {cols:cols,rows:rows,ch:chB.slice(),r:Array.from(rB),g:Array.from(gB),b:Array.from(bB),f:Array.from(fB)};}};
