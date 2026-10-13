@@ -98,6 +98,8 @@ pre.art{margin:0 0 16px;font-family:var(--font-mono);font-weight:700;font-size:m
 button.sel{box-shadow:0 0 0 1px var(--moon),0 0 14px rgba(232,180,90,.45);background:rgba(232,180,90,.16)}
 button.sel::before{content:'> '}
 #pkeys{white-space:pre;text-align:left}
+/* escala da interface em telas grandes (--ui definido em resize) */
+#top,#biome,#obj,#boss,#toast,#prompt,#pbar,#hint,#fmsg,#slash,#dash,#icap,#itag,.ov>:not(#mapart),#talk>*{zoom:var(--ui,1)}
 </style>
 <div id="stage">
   <canvas id="c"></canvas>
@@ -243,7 +245,8 @@ function resize(){
   W=cv.clientWidth||window.innerWidth||360;H=cv.clientHeight||window.innerHeight||640;
   dpr=Math.min(window.devicePixelRatio||1,2);
   cv.width=Math.max(1,Math.round(W*dpr));cv.height=Math.max(1,Math.round(H*dpr));
-  cw=Math.max(3.6,Math.min(8,W/100));if(window.__forceCW)cw=window.__forceCW;ch=cw/ASP;
+  /* telas largas: a célula cresce com a tela (~160 colunas), mantendo o enquadramento e o custo de desenho do 720p */
+  cw=Math.max(3.6,Math.min(8,W/100),W/160);if(window.__forceCW)cw=window.__forceCW;ch=cw/ASP;
   cols=Math.max(20,Math.floor(W/cw));rows=Math.max(20,Math.floor(H/ch));
   N=cols*rows;
   chB=new Array(N);
@@ -253,6 +256,7 @@ function resize(){
   cbBw=new Float32Array(cbN);cbBr=new Float32Array(cbN);cbGold=new Float32Array(cbN);cbPink=new Float32Array(cbN);
   cbWv=new Float32Array(cbN);cbFog=new Float32Array(cbN);cbGn=new Float32Array(cbN);cbDec=new Float32Array(cbN);
   ctx.setTransform(dpr,0,0,dpr,0,0);
+  document.documentElement.style.setProperty('--ui',Math.max(1,Math.min(2.5,Math.min(W/1280,H/720))).toFixed(3));
   ctx.font='500 '+(cw/0.6).toFixed(2)+'px '+MONO;
   ctx.textAlign='center';ctx.textBaseline='middle';
 }

@@ -129,3 +129,14 @@ test('phones keep the touch hints and touch play still works', async () => {
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });
+
+test('wide screens keep ~160 columns and scale the HUD', async () => {
+  for (const [w, h, ui] of [[1280, 720, 1], [1920, 1080, 1.5], [2560, 1440, 2]]) {
+    const { browser, page } = await openGame({ viewport: { width: w, height: h } });
+    try {
+      const r = await page.evaluate(() => ({ cols: window.__cav.hdr().cols, ui: +getComputedStyle(document.documentElement).getPropertyValue('--ui') }));
+      assert.ok(r.cols >= 155 && r.cols <= 162, `${w}x${h} cols=${r.cols}`);
+      assert.equal(r.ui, ui);
+    } finally { await browser.close(); }
+  }
+});
