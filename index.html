@@ -94,6 +94,7 @@ pre.art{margin:0 0 16px;font-family:var(--font-mono);font-weight:700;font-size:m
 .btn2.k{border-color:var(--red);color:var(--red)}
 #cont,#newg{display:none;margin-top:12px}
 #ovt.saved #cont,#ovt.saved #newg{display:inline-block}
+#qgame,#ride{display:none;margin-top:12px}.desk #qgame,.desk #ovt:not(.saved) #ride{display:inline-block}
 #stage.cine #dash{opacity:0!important;pointer-events:none}
 button.sel{box-shadow:0 0 0 1px var(--moon),0 0 14px rgba(232,180,90,.45);background:rgba(232,180,90,.16)}
 button.sel::before{content:'> '}
@@ -141,7 +142,7 @@ button.sel::before{content:'> '}
 &gt; three guardians hold the dark shut.
 &gt; someone has to ride_</div>
     <div class="tap" id="ttap">[ TAP TO RIDE ]</div>
-    <div><button class="btn2" id="cont" type="button">[ CONTINUE ]</button><button class="btn2 k" id="newg" type="button">[ NEW GAME ]</button></div>
+    <div><button class="btn2" id="ride" type="button">[ RIDE ]</button><button class="btn2" id="cont" type="button">[ CONTINUE ]</button><button class="btn2 k" id="newg" type="button">[ NEW GAME ]</button><button class="btn2" id="qgame" type="button">[ QUIT ]</button></div>
     <div class="how">drag to steer · [DASH] spends stamina · gallop fast to leap fences · find chests to ride faster · drink at wells, eat under trees</div>
   </div>
   <div class="ov" id="ovm">
@@ -2877,7 +2878,7 @@ window.addEventListener('keydown',function(e){
 window.addEventListener('keyup',function(e){keys[e.key.toLowerCase()]=false;keyInput();});
 
 /* ---------- menus navegáveis (teclado / controle) ---------- */
-var MENUS={title:['cont','newg'],choice:['kill','spare'],end:['keep','again'],pause:['resume','psnd','quit']},menuSel={};
+var MENUS={title:['ride','cont','newg','qgame'],choice:['kill','spare'],end:['keep','again'],pause:['resume','psnd','quit']},menuSel={};
 function menuItems(st){
   var ids=MENUS[st],out=[];if(!ids)return out;
   for(var i=0;i<ids.length;i++){var el=$(ids[i]);if(el&&el.offsetParent!==null)out.push(el);}
@@ -2904,7 +2905,9 @@ function resumeGame(){if(GM.state!=='pause')return;GM.state='play';ovP.classList
 function syncSnd(){var m=AU.isMuted();muteBtn.textContent=m?'[SND:OFF]':'[SND:ON]';psndB.textContent=m?'[ SOUND: OFF ]':'[ SOUND: ON ]';}
 $('resume').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();resumeGame();});
 psndB.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();AU.mute(!AU.isMuted());syncSnd();});
-$('quit').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();saveGame();try{location.reload();}catch(_){}});
+$('quit').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();saveGame();if(window.desktop)window.desktop.quit();else try{location.reload();}catch(_){}});
+/* versão desktop (Electron): sair do jogo pela tela título */
+if(window.desktop){document.body.classList.add('desk');$('qgame').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();window.desktop.quit();});}
 window.addEventListener('blur',function(){releaseInput();pauseGame();});
 document.addEventListener('visibilitychange',function(){if(document.hidden){releaseInput();pauseGame();}});
 
@@ -2915,7 +2918,7 @@ function pollPad(){
   var ps=navigator.getGamepads(),p=null,i;
   for(i=0;ps&&i<ps.length;i++)if(ps[i]&&ps[i].connected){p=ps[i];break;}
   if(!p)return;
-  if(!padSeen){padSeen=true;setHints();}
+  if(!padSeen){padSeen=true;setHints();if(GM.state==='title')refreshTitle();}
   var cur=[];for(i=0;i<17;i++){var b=p.buttons[i];cur[i]=!!b&&(b.pressed||b.value>0.5);}
   function pr(n){return cur[n]&&!padPrev[n];}
   var x=p.axes[0]||0,y=p.axes[1]||0;
@@ -2943,7 +2946,7 @@ function pollPad(){
   }
   padPrev=cur;
 }
-window.addEventListener('gamepadconnected',function(){padSeen=true;setHints();});
+window.addEventListener('gamepadconnected',function(){padSeen=true;setHints();if(GM.state==='title')refreshTitle();});
 
 /* ---------- dicas de controle conforme o dispositivo ---------- */
 var FINE=!!(window.matchMedia&&matchMedia('(hover:hover) and (pointer:fine)').matches);
@@ -2956,9 +2959,11 @@ function setHints(){
   }else if(FINE){
     h='WASD / ARROWS: ride  |  SPACE: strike  |  SHIFT: dash  |  M: map  |  ESC: pause';
     how='WASD or arrows to ride (or drag with the mouse) · SPACE strikes · SHIFT dashes (spends stamina) · gallop fast to leap fences · find chests to ride faster · drink at wells, eat under trees';
-    pk='WASD / ARROWS     ride\nSPACE / ENTER     strike\nSHIFT / X / Z     dash\nM                 map\nESC / P           pause';
+    pk='WASD / ARROWS     ride\nSPACE / ENTER     strike\nSHIFT / X / Z     dash\nM                 map\nESC / P           pause'+(window.desktop?'\nF11 / ALT+ENTER   fullscreen':'');
   }else return;
   uiHint.textContent=h;document.querySelector('#ovt .how').textContent=how;$('pkeys').textContent=pk;
+  $('itag').textContent=padSeen?'[A: skip]':'[any key: skip]';
+  $('ttap').dataset.k=padSeen?'A':'ENTER';
 }
 setHints();
 
@@ -3179,11 +3184,13 @@ var contB=$('cont'),newB=$('newg'),tTap=$('ttap'),newArm=0;
 function refreshTitle(){
   var sv=hasSave();
   ovT.classList.toggle('saved',sv);
-  tTap.textContent=sv?'[ TAP TO CONTINUE ]':'[ TAP TO RIDE ]';
+  var vb=FINE||padSeen?'PRESS '+(tTap.dataset.k||'ENTER')+' TO':'TAP TO';
+  tTap.textContent=sv?'[ '+vb+' CONTINUE ]':'[ '+vb+' RIDE ]';
   newArm=0;newB.textContent='[ NEW GAME ]';
 }
 function titleGo(){if(GM.state!=='title')return;if(hasSave())contGame();else newGame();}
 contB.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();contGame();});
+$('ride').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();newGame();});
 newB.addEventListener('pointerdown',function(e){
   e.preventDefault();e.stopPropagation();
   if(GM.state!=='title')return;

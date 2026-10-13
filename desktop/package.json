@@ -1,0 +1,19 @@
+{
+  "name": "last-rider-desktop",
+  "productName": "Last Rider",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Desktop (Windows/Linux) wrapper for Last Rider.",
+  "main": "main.js",
+  "scripts": {
+    "prepare-game": "node scripts/copy-game.mjs",
+    "start": "npm run prepare-game && electron .",
+    "package:linux": "npm run prepare-game && electron-packager . \"Last Rider\" --platform=linux --arch=x64 --out=dist --overwrite --prune=true --ignore=^/dist --ignore=^/scripts",
+    "package:win": "npm run prepare-game && electron-packager . \"Last Rider\" --platform=win32 --arch=x64 --out=dist --overwrite --prune=true --ignore=^/dist --ignore=^/scripts",
+    "smoke": "npm run prepare-game && node scripts/smoke.mjs"
+  },
+  "devDependencies": {
+    "@electron/packager": "18.3.6",
+    "electron": "37.10.3"
+  }
+}

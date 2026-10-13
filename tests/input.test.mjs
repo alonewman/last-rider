@@ -59,7 +59,8 @@ test('the KILL / SPARE choice can be made with the keyboard', async () => {
     await page.evaluate(() => window.__gm.hermitChoice());
     assert.equal(await state(page), 'choice');
     await page.keyboard.press('ArrowRight');
-    assert.equal(await page.evaluate(() => document.querySelector('#ovc button.sel').id), 'spare');
+    const sel = await page.waitForFunction(() => document.querySelector('#ovc button.sel')?.id);
+    assert.equal(await sel.jsonValue(), 'spare');
     await page.keyboard.press('Enter');
     assert.equal(await state(page), 'talk');
   } finally { await browser.close(); }
@@ -71,7 +72,8 @@ test('the ending screen can be left with the keyboard', async () => {
     await page.evaluate(() => { window.__gm.GM.state = 'choice'; window.__gm.chooseEnding(false); });
     assert.equal(await state(page), 'end');
     // KILL ending hides KEEP RIDING, so the only option is NEW GAME
-    assert.equal(await page.evaluate(() => document.querySelector('#ovw button.sel').id), 'again');
+    const sel = await page.waitForFunction(() => document.querySelector('#ovw button.sel')?.id);
+    assert.equal(await sel.jsonValue(), 'again');
   } finally { await browser.close(); }
 });
 
