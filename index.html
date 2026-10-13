@@ -95,6 +95,9 @@ pre.art{margin:0 0 16px;font-family:var(--font-mono);font-weight:700;font-size:m
 #cont,#newg{display:none;margin-top:12px}
 #ovt.saved #cont,#ovt.saved #newg{display:inline-block}
 #stage.cine #dash{opacity:0!important;pointer-events:none}
+button.sel{box-shadow:0 0 0 1px var(--moon),0 0 14px rgba(232,180,90,.45);background:rgba(232,180,90,.16)}
+button.sel::before{content:'> '}
+#pkeys{white-space:pre;text-align:left}
 </style>
 <div id="stage">
   <canvas id="c"></canvas>
@@ -163,6 +166,11 @@ or you may let him speak.</div>
     <div class="sub" id="ovws"></div>
     <div id="stats"></div>
     <button class="btn2" id="keep" type="button">[ KEEP RIDING ]</button><br><button id="again" type="button">[ NEW GAME ]</button>
+  </div>
+  <div class="ov" id="ovp" style="cursor:default">
+    <pre class="art" style="font-size:min(4vw,20px)">&gt; PAUSED_</pre>
+    <div><button class="btn2" id="resume" type="button">[ RESUME ]</button><button class="btn2" id="psnd" type="button">[ SOUND: ON ]</button><button class="btn2 k" id="quit" type="button">[ SAVE &amp; QUIT ]</button></div>
+    <div class="how" id="pkeys"></div>
   </div>
 </div>
 <script>
@@ -1671,7 +1679,7 @@ ovT.addEventListener('pointerdown',function(e){e.preventDefault();titleGo();});
 ovD.addEventListener('pointerdown',function(e){e.preventDefault();GM.retry();});
 $('again').addEventListener('pointerdown',function(e){e.preventDefault();try{location.reload();}catch(_){}});
 var muteBtn=$('mute');
-muteBtn.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();var m=!AU.isMuted();AU.mute(m);muteBtn.textContent=m?'[SND:OFF]':'[SND:ON]';});
+muteBtn.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();AU.mute(!AU.isMuted());syncSnd();});
 
 /* ---------- campanha: upgrades, dash, cercas, baús, lore, diálogo, bomba, finais ---------- */
 var UP_SPD=0.9,SAVEKEY='lastrider_v2';
@@ -2747,7 +2755,7 @@ var AU=(function(){
         ac=new AC();master=ac.createGain();master.gain.value=muted?0:0.5;master.connect(ac.destination);
         var n=ac.sampleRate*1,b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);for(var i=0;i<n;i++)d[i]=Math.random()*2-1;noiseBuf=b;
         on=true;nextT=ac.currentTime+0.1;timer=setInterval(loop,40);
-        document.addEventListener('visibilitychange',function(){if(!ac)return;if(document.hidden)ac.suspend();else ac.resume();});
+        document.addEventListener('visibilitychange',function(){if(!ac)return;if(document.hidden)ac.suspend();else if(GM.state!=='pause')ac.resume();});
       }catch(e){on=false;}
     },
     level:function(n){level=n;},
@@ -2758,6 +2766,7 @@ var AU=(function(){
       rainG.gain.setTargetAtTime(muted?0:v*0.09,ac.currentTime,0.3);
     },
     mute:function(m){muted=m;if(master)master.gain.value=m?0:0.5;},
+    pause:function(p){if(!ac)return;try{if(p)ac.suspend();else ac.resume();}catch(e){}},
     isMuted:function(){return muted;},
     sfx:function(n){
       if(!on||muted)return;var t=ac.currentTime+0.005;
@@ -2842,19 +2851,112 @@ function offBtn(){slashBtn.classList.remove('on');}
 slashBtn.addEventListener('pointerup',offBtn);slashBtn.addEventListener('pointerleave',offBtn);slashBtn.addEventListener('pointercancel',offBtn);
 window.addEventListener('pointerdown',function(){if(GM.state==='intro')GM.skipIntro();},true);
 window.addEventListener('keydown',function(e){
-  var k=e.key.toLowerCase();
-  if(GM.state==='title'){if(k==='enter'||k===' '){titleGo();e.preventDefault();}return;}
-  if(GM.state==='intro'){GM.skipIntro();return;}
-  if(GM.state==='map'){GM.mapClose();return;}
+  var k=e.key.toLowerCase(),st=GM.state;
+  if(st==='title'||menuItems(st).length){
+    if(k==='arrowleft'||k==='arrowup'||k==='a'||k==='w'){menuMove(-1);e.preventDefault();return;}
+    if(k==='arrowright'||k==='arrowdown'||k==='d'||k==='s'||k==='tab'){menuMove(1);e.preventDefault();return;}
+    if(k==='enter'||k===' '){if(menuItems(st).length)menuPress();else titleGo();e.preventDefault();return;}
+    if(st==='pause'&&(k==='escape'||k==='p'))resumeGame();
+    return;
+  }
+  if(st==='intro'){GM.skipIntro();return;}
+  if(st==='map'){GM.mapClose();return;}
+  if(k==='escape'||k==='p'){pauseGame();e.preventDefault();return;}
   if(k==='m'){GM.mapOpen();return;}
-  if(GM.state==='dead'){GM.retry();return;}
-  if(GM.state==='cut'||GM.state==='choice'||GM.state==='end'||GM.state==='talk')return;
+  if(st==='dead'){GM.retry();return;}
+  if(st==='cut'||st==='choice'||st==='end'||st==='talk'||st==='pause')return;
   if(k===' '||k==='enter'){doSlash();e.preventDefault();return;}
   if(k==='shift'||k==='x'||k==='z'){doDash();e.preventDefault();return;}
   if(k==='arrowup'||k==='arrowdown'||k==='arrowleft'||k==='arrowright')e.preventDefault();
   keys[k]=true;keyInput();
 });
 window.addEventListener('keyup',function(e){keys[e.key.toLowerCase()]=false;keyInput();});
+
+/* ---------- menus navegáveis (teclado / controle) ---------- */
+var MENUS={title:['cont','newg'],choice:['kill','spare'],end:['keep','again'],pause:['resume','psnd','quit']},menuSel={};
+function menuItems(st){
+  var ids=MENUS[st],out=[];if(!ids)return out;
+  for(var i=0;i<ids.length;i++){var el=$(ids[i]);if(el&&el.offsetParent!==null)out.push(el);}
+  return out;
+}
+function menuDraw(){
+  var st=GM.state,it=menuItems(st),cur=it.length?it[Math.min(menuSel[st]||0,it.length-1)]:null;
+  for(var m in MENUS)for(var i=0;i<MENUS[m].length;i++){var el=$(MENUS[m][i]);if(el)setCls(el,'sel',el===cur);}
+}
+function menuMove(d){var st=GM.state,n=menuItems(st).length;if(!n)return;menuSel[st]=(((menuSel[st]||0)+d)%n+n)%n;menuDraw();sfx('blip');}
+function menuPress(){
+  var st=GM.state,it=menuItems(st);if(!it.length)return;
+  it[Math.min(menuSel[st]||0,it.length-1)].dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true}));
+}
+
+/* ---------- pausa ---------- */
+var ovP=$('ovp'),psndB=$('psnd');
+function releaseInput(){for(var k in keys)keys[k]=false;stickReset();padSteer=false;}
+function pauseGame(){
+  if(GM.state!=='play')return;
+  GM.state='pause';releaseInput();menuSel.pause=0;ovP.classList.add('on');AU.pause(true);syncSnd();
+}
+function resumeGame(){if(GM.state!=='pause')return;GM.state='play';ovP.classList.remove('on');AU.pause(false);}
+function syncSnd(){var m=AU.isMuted();muteBtn.textContent=m?'[SND:OFF]':'[SND:ON]';psndB.textContent=m?'[ SOUND: OFF ]':'[ SOUND: ON ]';}
+$('resume').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();resumeGame();});
+psndB.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();AU.mute(!AU.isMuted());syncSnd();});
+$('quit').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();saveGame();try{location.reload();}catch(_){}});
+window.addEventListener('blur',function(){releaseInput();pauseGame();});
+document.addEventListener('visibilitychange',function(){if(document.hidden){releaseInput();pauseGame();}});
+
+/* ---------- controle (Gamepad API, layout padrão) ---------- */
+var padPrev=[],padSteer=false,padNav=0,padSeen=false;
+function pollPad(){
+  if(!navigator.getGamepads)return;
+  var ps=navigator.getGamepads(),p=null,i;
+  for(i=0;ps&&i<ps.length;i++)if(ps[i]&&ps[i].connected){p=ps[i];break;}
+  if(!p)return;
+  if(!padSeen){padSeen=true;setHints();}
+  var cur=[];for(i=0;i<17;i++){var b=p.buttons[i];cur[i]=!!b&&(b.pressed||b.value>0.5);}
+  function pr(n){return cur[n]&&!padPrev[n];}
+  var x=p.axes[0]||0,y=p.axes[1]||0;
+  if(cur[14])x=-1;if(cur[15])x=1;if(cur[12])y=-1;if(cur[13])y=1;
+  var m=Math.sqrt(x*x+y*y),st=GM.state;
+  if(st==='title'||menuItems(st).length){
+    var nav=Math.abs(x)>0.6?(x>0?1:-1):Math.abs(y)>0.6?(y>0?1:-1):0;
+    if(nav&&nav!==padNav)menuMove(nav);padNav=nav;
+    if(pr(0)){if(menuItems(st).length)menuPress();else titleGo();}
+    else if(st==='pause'&&(pr(1)||pr(9)))resumeGame();
+  }else if(st==='play'){
+    if(stickId===null){
+      if(m>0.22){input.dc=x/cw;input.dr=y/ch;input.mag=clamp01((m-0.22)/0.68);padSteer=true;}
+      else if(padSteer){padSteer=false;input.mag=0;keyInput();}
+    }
+    if(pr(0)||pr(2)||pr(5))doSlash();
+    if(pr(1)||pr(4)||pr(7))doDash();
+    if(pr(9))pauseGame();else if(pr(8)||pr(3))GM.mapOpen();
+  }else{
+    if(padSteer){padSteer=false;input.mag=0;}
+    if(st==='map'&&(pr(0)||pr(1)||pr(8)||pr(3)))GM.mapClose();
+    else if(st==='dead'&&pr(0))GM.retry();
+    else if(st==='intro'&&(pr(0)||pr(9)))GM.skipIntro();
+    else if(st==='talk'&&pr(0))talkAdvance();
+  }
+  padPrev=cur;
+}
+window.addEventListener('gamepadconnected',function(){padSeen=true;setHints();});
+
+/* ---------- dicas de controle conforme o dispositivo ---------- */
+var FINE=!!(window.matchMedia&&matchMedia('(hover:hover) and (pointer:fine)').matches);
+function setHints(){
+  var h,how,pk;
+  if(padSeen){
+    h='L-STICK: ride  |  A: strike  |  B: dash  |  BACK: map  |  START: pause';
+    how='left stick to ride · A strikes · B dashes (spends stamina) · gallop fast to leap fences · find chests to ride faster · drink at wells, eat under trees';
+    pk='L-STICK / D-PAD   ride\nA / X / RB        strike\nB / LB / RT       dash\nY / BACK          map\nSTART             pause';
+  }else if(FINE){
+    h='WASD / ARROWS: ride  |  SPACE: strike  |  SHIFT: dash  |  M: map  |  ESC: pause';
+    how='WASD or arrows to ride (or drag with the mouse) · SPACE strikes · SHIFT dashes (spends stamina) · gallop fast to leap fences · find chests to ride faster · drink at wells, eat under trees';
+    pk='WASD / ARROWS     ride\nSPACE / ENTER     strike\nSHIFT / X / Z     dash\nM                 map\nESC / P           pause';
+  }else return;
+  uiHint.textContent=h;document.querySelector('#ovt .how').textContent=how;$('pkeys').textContent=pk;
+}
+setHints();
 
 /* ---------- simulação ---------- */
 function angdiff(a,b){var d=a-b;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;return d;}
@@ -3033,7 +3135,10 @@ function drawHorseSetup(){
 var last=0;
 function frame(ts){
   var t=ts/1000,dt=Math.min(0.05,Math.max(0.001,t-last||0.016));last=t;
-  update(dt,t);render(t);
+  pollPad();
+  if(GM.state!=='pause')update(dt,t);
+  render(t);
+  if(MENUS[GM.state])menuDraw();
   window.requestAnimationFrame(frame);
 }
 function dump(){
