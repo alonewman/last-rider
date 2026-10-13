@@ -14,7 +14,7 @@ _Last updated: 2026-10-13. Keep this short; update it after meaningful progress.
 
 | Item | Value |
 |---|---|
-| Game | `index.html`: one file, about 3.2k lines of ES5 JS, Canvas 2D, WebAudio. No build step and no runtime dependencies. |
+| Game | `index.html`: one file, about 3.3k lines of ES5 JS, Canvas 2D, WebAudio. No build step and no runtime dependencies. |
 | Font | `fonts/` JetBrains Mono NL 2.242 (SIL OFL 1.1, `fonts/OFL.txt`), bundled locally |
 | Desktop | `desktop/`: Electron 37.10.3 wrapper, packaged with @electron/packager 18.3.6 |
 | Tests | `tests/`: Node test runner + Playwright 1.56.1 (headless Chromium) |
@@ -49,9 +49,8 @@ The state machine lives in `GM.state`: `title | intro | play | pause | map | tal
 - **Balance and difficulty:** never playtested by a human in this session; the bot bypasses fights.
 - **Length:** unknown. The campaign is small: 4 camps, 3 guardians and 1 final fight, plus 18 chests and 5 lore stones. It probably runs well under 2 hours.
 - **Windows build:** packaged but not run (there's no Windows/Wine in the container).
-- **Audio:** an on/off switch is the only setting; there's no volume control.
 
-**Missing for a premium PC release:** an options menu (volume, fullscreen, reduced flashes/shake), key rebinding, Steamworks (achievements, cloud saves), app icon and version metadata, code signing, a store page and capsule art, a trailer, and enough content and depth for the price point.
+**Missing for a premium PC release:** key rebinding, separate music/SFX volume, Steamworks (achievements, cloud saves), final app icon and key art (the current icon is a typographic placeholder), code signing, a store page and capsule art, a trailer, and enough content and depth for the price point.
 
 ## 5. Changes completed (this session)
 
@@ -61,12 +60,13 @@ The state machine lives in `GM.state`: `title | intro | play | pause | map | tal
 | **PC input:** ESC/P pause with a true sim freeze and audio suspend; focus loss pauses and releases held keys; keyboard menus (the ending choice was mouse-only, so keyboard players could not finish); standard gamepad support; device-specific hints. | 8 tests incl. a mocked gamepad and a mobile touch regression |
 | **Offline font:** bundled JetBrains Mono NL with its OFL licence, so the game makes no CDN requests. | Test that blocks all network access |
 | **Resolution independence:** about 160 columns at every width. At 1440p this cut work from 32k to 8k glyphs per frame (25 → 60 fps headless). The HUD scales 1× / 1.5× / 2×. | Scaling test and screenshots |
-| **Desktop wrapper:** Electron with quit-to-desktop, fullscreen toggle and RIDE/QUIT on the title. Fixed Enter-quits-on-first-launch. | `npm run smoke` on the dev build and the packaged Linux build |
+| **Desktop wrapper:** Electron with quit-to-desktop, fullscreen toggle and RIDE/QUIT on the title. Fixed Enter-quits-on-first-launch. Placeholder icon; the Windows exe carries name, version and copyright resources. | `npm run smoke` on the dev build and the packaged Linux build; resource strings checked in the exe |
+| **Options (pause menu):** volume 100/70/40/OFF, reduced effects (caps white flashes at 25%, dims lightning, no camera shake), fullscreen on web and desktop, and a touch `[II]` pause button. Options persist apart from the save. | 6 tests |
+| **Standards mode:** added doctype and UTF-8 charset; layout measured identical before and after. | Layout comparison and a test |
 
 ## 6. Known issues and technical debt
 
 - The single 3.2k-line file has globals shared across sections. It works and is fast, but further big features would benefit from splitting into modules (no bundler needed: ES modules or several `<script>` tags). Don't split it without a reason; every test drives the real file.
-- `index.html` has no `<!doctype html>`, so it renders in quirks mode. It renders correctly today; adding a doctype needs a visual check.
 - On death you respawn at the checkpoint with full HP; uncleared camps reset and the guardian resets. That is intended, but the difficulty curve is unknown.
 - Electron's "Insecure CSP" warning shows in dev only. A CSP meta tag could be added once inline handlers have been reviewed.
 - `GM.vm` and `spd` units are not documented anywhere; balance values are scattered as literals.
@@ -84,8 +84,7 @@ The state machine lives in `GM.state`: `title | intro | play | pause | map | tal
 |---|---|---|---|---|---|
 | P1 | Human playtest of the full campaign on PC (time it; note deaths and confusion) | Very high: length and difficulty are unknown | 2–3 h human | none | play notes |
 | P1 | Run the Windows build on a real PC (fullscreen, gamepad, save location) | High | 30 min human | none | manual |
-| P1 | Options menu: master/music/SFX volume, fullscreen, reduced flashes and shake (the white flash and lightning are a photosensitivity concern) | High | S | none | Playwright tests |
-| P2 | Key rebinding plus controller glyph hints | Medium | M | options menu | tests |
+| P2 | Key rebinding, separate music/SFX volume, controller glyph hints | Medium | M | none | tests |
 | P2 | Content and depth for a premium price: more camps and enemy variety per biome, a 4th guardian or optional bosses, more upgrades, a hard mode | Very high | L | playtest results | playtest |
 | P2 | Balance pass driven by playtest data (guardian HP and stun windows, enemy density, apple and well healing) | High | M | playtest | playtest |
 | P3 | Audio depth (per-guardian themes, ambient layers), crisper hit feedback | Medium | M | none | listening |
@@ -100,3 +99,9 @@ The state machine lives in `GM.state`: `title | intro | play | pause | map | tal
 2. Is a Steam partner account set up yet? Steam Direct needs a human, a fee and tax/bank details.
 3. Should the "colossi" wording stay?
 4. Should the web/mobile version stay free (as a demo or marketing) alongside the paid PC release?
+
+## 10. Tools evaluated (2026-10-13)
+
+- **Donchitos/Claude-Code-Game-Studios** (MIT, active): 49 agents, 74 skills, hooks and rules aimed at Godot, Unity and Unreal studio pipelines. **Not adopted.** It is a large framework that would consume context, it targets engines this project doesn't use, and it overlaps with what the plain test suite already covers. A reference clone sits at `~/my-game` in the session container only.
+- **jojojobring/claude-skills** (installed into `~/.claude/skills` for the session only): `webapp-testing` is Apache-2.0 and Playwright-based, which is the same approach the repo's tests use; `systematic-debugging` and `verification-before-completion` are general practice. Nothing from it is vendored into the repo.
+- **Adopted:** Playwright 1.56.1 (tests), Electron 37 + @electron/packager 18 (desktop builds). Candidate for later: `steamworks.js` once a Steam app ID exists.
